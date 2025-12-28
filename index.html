@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Statistics App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.95em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #c33;
+        }
+
+        .success {
+            background: #efe;
+            color: #3c3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #3c3;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 600px) {
+            .filter-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+        }
+
+        .chart-container {
+            margin-top: 30px;
+            padding: 25px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 200px;
+            margin-top: 20px;
+            gap: 20px;
+        }
+
+        .bar {
+            flex: 1;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 8px 8px 0 0;
+            position: relative;
+            transition: all 0.3s;
+            min-height: 20px;
+        }
+
+        .bar:hover {
+            opacity: 0.8;
+        }
+
+        .bar-label {
+            text-align: center;
+            margin-top: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .bar-value {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-weight: bold;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📧 Email Statistics App</h1>
+        <p class="subtitle">Monitor your inbox & spam statistics</p>
+
+        <!-- Login Section -->
+        <div class="section" id="loginSection">
+            <h2>🔐 Email Configuration</h2>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="emailInput" placeholder="example@gmail.com">
+            </div>
+            <div class="form-group">
+                <label>Password / App Password</label>
+                <input type="password" id="passwordInput" placeholder="Your email password">
+            </div>
+            <div class="form-group">
+                <label>IMAP Server</label>
+                <input type="text" id="imapServer" placeholder="imap.gmail.com">
+            </div>
+            <div class="form-group">
+                <label>IMAP Port</label>
+                <input type="number" id="imapPort" value="993" placeholder="993">
+            </div>
+            <button class="btn" onclick="connectEmail()">Connect to Email</button>
+            <div id="loginMessage"></div>
+        </div>
+
+        <!-- Filter & Stats Section -->
+        <div class="section hidden" id="statsSection">
+            <h2>📊 Email Statistics</h2>
+            
+            <div class="filter-row">
+                <div class="form-group">
+                    <label>Filter by Subject</label>
+                    <input type="text" id="subjectFilter" placeholder="e.g., Invoice, Newsletter">
+                </div>
+                <div class="form-group">
+                    <label>Filter by From</label>
+                    <input type="text" id="fromFilter" placeholder="e.g., sender@example.com">
+                </div>
+            </div>
+            
+            <button class="btn" onclick="fetchStatistics()">Get Statistics</button>
+            
+            <div id="loadingIndicator" class="hidden">
+                <div class="spinner"></div>
+                <p class="loading">Fetching emails...</p>
+            </div>
+            
+            <div id="statsResult" class="hidden">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="inboxCount">0</div>
+                        <div class="stat-label">Inbox Messages</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="spamCount">0</div>
+                        <div class="stat-label">Spam Messages</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalCount">0</div>
+                        <div class="stat-label">Total Filtered</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3 style="color: #333; margin-bottom: 15px;">📈 Visual Comparison</h3>
+                    <div class="bar-chart">
+                        <div style="flex: 1;">
+                            <div class="bar" id="inboxBar">
+                                <div class="bar-value" id="inboxBarValue">0</div>
+                            </div>
+                            <div class="bar-label">Inbox</div>
+                        </div>
+                        <div style="flex: 1;">
+                            <div class="bar" id="spamBar">
+                                <div class="bar-value" id="spamBarValue">0</div>
+                            </div>
+                            <div class="bar-label">Spam</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="statsMessage"></div>
+        </div>
+    </div>
+
+    <script>
+        let emailConfig = null;
+
+        function showMessage(elementId, message, type) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
+        function connectEmail() {
+            const email = document.getElementById('emailInput').value;
+            const password = document.getElementById('passwordInput').value;
+            const server = document.getElementById('imapServer').value;
+            const port = document.getElementById('imapPort').value;
+
+            if (!email || !password || !server || !port) {
+                showMessage('loginMessage', '⚠️ Please fill all fields', 'error');
+                return;
+            }
+
+            emailConfig = { email, password, server, port };
+            
+            showMessage('loginMessage', '✅ Configuration saved! Now you can fetch statistics.', 'success');
+            
+            setTimeout(() => {
+                document.getElementById('statsSection').classList.remove('hidden');
+                document.getElementById('statsSection').scrollIntoView({ behavior: 'smooth' });
+            }, 1000);
+        }
+
+        async function fetchStatistics() {
+            if (!emailConfig) {
+                showMessage('statsMessage', '⚠️ Please configure email first', 'error');
+                return;
+            }
+
+            const subjectFilter = document.getElementById('subjectFilter').value;
+            const fromFilter = document.getElementById('fromFilter').value;
+
+            document.getElementById('loadingIndicator').classList.remove('hidden');
+            document.getElementById('statsResult').classList.add('hidden');
+            document.getElementById('statsMessage').innerHTML = '';
+
+            try {
+                const response = await fetch('/.netlify/functions/check-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...emailConfig,
+                        subjectFilter,
+                        fromFilter
+                    })
+                });
+
+                const data = await response.json();
+
+                document.getElementById('loadingIndicator').classList.add('hidden');
+
+                if (data.error) {
+                    showMessage('statsMessage', `❌ Error: ${data.error}`, 'error');
+                    return;
+                }
+
+                // Update stats
+                document.getElementById('inboxCount').textContent = data.inbox;
+                document.getElementById('spamCount').textContent = data.spam;
+                document.getElementById('totalCount').textContent = data.total;
+
+                // Update chart
+                const maxValue = Math.max(data.inbox, data.spam, 1);
+                const inboxHeight = (data.inbox / maxValue) * 100;
+                const spamHeight = (data.spam / maxValue) * 100;
+
+                document.getElementById('inboxBar').style.height = inboxHeight + '%';
+                document.getElementById('spamBar').style.height = spamHeight + '%';
+                document.getElementById('inboxBarValue').textContent = data.inbox;
+                document.getElementById('spamBarValue').textContent = data.spam;
+
+                document.getElementById('statsResult').classList.remove('hidden');
+                
+                showMessage('statsMessage', '✅ Statistics fetched successfully!', 'success');
+
+            } catch (error) {
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                showMessage('statsMessage', `❌ Connection error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
