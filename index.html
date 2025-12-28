@@ -164,14 +164,6 @@
             box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
         }
 
-        .btn-small {
-            padding: 8px 16px;
-            font-size: 14px;
-            width: auto;
-            display: inline-block;
-            margin: 5px;
-        }
-
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -191,7 +183,6 @@
 
         .stat-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
         }
 
         .stat-number {
@@ -274,6 +265,7 @@
             transform: translateX(-50%);
             font-size: 11px;
             color: var(--text-secondary);
+            white-space: nowrap;
         }
 
         .alert-box {
@@ -460,17 +452,16 @@
                 <h1>📧 Email Statistics Pro</h1>
             </div>
             <div class="header-right">
-                <select class="account-selector" id="accountSelector" onchange="switchAccount()">
+                <select class="account-selector" id="accountSelector">
                     <option value="">Select Account</option>
                 </select>
-                <button class="shortcuts-btn" onclick="showShortcuts()" title="Keyboard Shortcuts (?)">⌨️</button>
-                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme (T)">🌙</button>
+                <button class="shortcuts-btn" title="Keyboard Shortcuts (?)">⌨️</button>
+                <button class="theme-toggle" title="Toggle Theme (T)">🌙</button>
             </div>
         </div>
 
         <div id="alertContainer"></div>
 
-        <!-- Account Management -->
         <div class="section">
             <h2>👤 Account Management</h2>
             <div class="form-group">
@@ -495,12 +486,11 @@
                     <input type="number" id="imapPort" value="993" placeholder="993">
                 </div>
             </div>
-            <button class="btn" onclick="addAccount()">Add Account</button>
+            <button class="btn" id="addAccountBtn">Add Account</button>
             
             <div class="account-list" id="accountList"></div>
         </div>
 
-        <!-- Stats Section -->
         <div class="section hidden" id="statsSection">
             <h2>📊 Email Statistics</h2>
             
@@ -515,7 +505,7 @@
                 </div>
             </div>
             
-            <button class="btn" onclick="fetchStatistics()">Get Statistics (R)</button>
+            <button class="btn" id="fetchStatsBtn">Get Statistics (R)</button>
             
             <div id="loadingIndicator" class="hidden">
                 <div class="spinner"></div>
@@ -558,12 +548,11 @@
         </div>
     </div>
 
-    <!-- Shortcuts Modal -->
     <div class="modal" id="shortcutsModal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>⌨️ Keyboard Shortcuts</h2>
-                <button class="close-modal" onclick="closeShortcuts()">×</button>
+                <button class="close-modal" id="closeModalBtn">×</button>
             </div>
             <div class="shortcut-item">
                 <span>Refresh Statistics</span>
@@ -598,32 +587,22 @@
         let statsHistory = [];
         let cachedResults = {};
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', async () => {
-            await loadAccounts();
-            await loadHistory();
-            loadTheme();
-            renderAccounts();
-            setupKeyboardShortcuts();
-        });
-
-        // Storage Functions
         async function loadAccounts() {
             try {
                 const result = await window.storage.get('email_accounts');
                 if (result && result.value) {
                     accounts = JSON.parse(result.value);
                 }
-            } catch (error) {
-                console.log('No accounts found or error loading');
+            } catch (e) {
+                console.log('No saved accounts');
             }
         }
 
         async function saveAccounts() {
             try {
                 await window.storage.set('email_accounts', JSON.stringify(accounts));
-            } catch (error) {
-                console.error('Error saving accounts:', error);
+            } catch (e) {
+                console.error('Save error:', e);
             }
         }
 
@@ -633,30 +612,49 @@
                 if (result && result.value) {
                     statsHistory = JSON.parse(result.value);
                 }
-            } catch (error) {
-                console.log('No history found');
+            } catch (e) {
+                console.log('No history');
             }
         }
 
         async function saveHistory() {
             try {
-                // Keep last 30 days
                 if (statsHistory.length > 30) {
                     statsHistory = statsHistory.slice(-30);
                 }
                 await window.storage.set('stats_history', JSON.stringify(statsHistory));
-            } catch (error) {
-                console.error('Error saving history:', error);
+            } catch (e) {
+                console.error('History save error:', e);
             }
         }
 
-        // Account Management
-        async function addAccount() {
-            const name = document.getElementById('accountName').value;
-            const email = document.getElementById('emailInput').value;
-            const password = document.getElementById('passwordInput').value;
-            const server = document.getElementById('imapServer').value;
-            const port = document.getElementById('imapPort').value;
+        function loadTheme() {
+            const theme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const newTheme = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        function showAlert(msg, type) {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert-box alert-${type}`;
+            alert.textContent = msg;
+            container.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        function addAccount() {
+            const name = document.getElementById('accountName').value.trim();
+            const email = document.getElementById('emailInput').value.trim();
+            const password = document.getElementById('passwordInput').value.trim();
+            const server = document.getElementById('imapServer').value.trim();
+            const port = document.getElementById('imapPort').value.trim();
 
             if (!name || !email || !password || !server || !port) {
                 showAlert('⚠️ Please fill all fields', 'error');
@@ -664,15 +662,14 @@
             }
 
             accounts.push({ name, email, password, server, port });
-            await saveAccounts();
+            saveAccounts();
             renderAccounts();
             
-            // Clear form
             document.getElementById('accountName').value = '';
             document.getElementById('emailInput').value = '';
             document.getElementById('passwordInput').value = '';
             
-            showAlert('✅ Account added successfully!', 'success');
+            showAlert('✅ Account added!', 'success');
         }
 
         function renderAccounts() {
@@ -682,51 +679,46 @@
             list.innerHTML = '';
             selector.innerHTML = '<option value="">Select Account</option>';
             
-            accounts.forEach((acc, index) => {
-                // Render chips
+            accounts.forEach((acc, idx) => {
                 const chip = document.createElement('div');
-                chip.className = 'account-chip' + (index === currentAccountIndex ? ' active' : '');
+                chip.className = 'account-chip' + (idx === currentAccountIndex ? ' active' : '');
                 chip.innerHTML = `
-                    <span onclick="selectAccount(${index})">${acc.name}</span>
-                    <button class="delete-account" onclick="deleteAccount(${index})">×</button>
+                    <span>${acc.name}</span>
+                    <button class="delete-account">×</button>
                 `;
+                chip.querySelector('span').addEventListener('click', () => selectAccount(idx));
+                chip.querySelector('button').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteAccount(idx);
+                });
                 list.appendChild(chip);
                 
-                // Render selector
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = acc.name;
-                if (index === currentAccountIndex) option.selected = true;
-                selector.appendChild(option);
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = acc.name;
+                if (idx === currentAccountIndex) opt.selected = true;
+                selector.appendChild(opt);
             });
         }
 
-        function selectAccount(index) {
-            currentAccountIndex = index;
+        function selectAccount(idx) {
+            currentAccountIndex = idx;
             renderAccounts();
             document.getElementById('statsSection').classList.remove('hidden');
             document.getElementById('statsSection').scrollIntoView({ behavior: 'smooth' });
         }
 
-        function switchAccount() {
-            const index = document.getElementById('accountSelector').value;
-            if (index !== '') {
-                selectAccount(parseInt(index));
-            }
-        }
-
-        async function deleteAccount(index) {
+        function deleteAccount(idx) {
             if (confirm('Delete this account?')) {
-                accounts.splice(index, 1);
-                await saveAccounts();
-                if (currentAccountIndex === index) {
+                accounts.splice(idx, 1);
+                saveAccounts();
+                if (currentAccountIndex === idx) {
                     currentAccountIndex = null;
                 }
                 renderAccounts();
             }
         }
 
-        // Statistics
         async function fetchStatistics() {
             if (currentAccountIndex === null) {
                 showAlert('⚠️ Please select an account', 'error');
@@ -737,13 +729,12 @@
             const subjectFilter = document.getElementById('subjectFilter').value;
             const fromFilter = document.getElementById('fromFilter').value;
 
-            // Check cache
             const cacheKey = `${account.email}_${subjectFilter}_${fromFilter}`;
-            const cacheTime = 5 * 60 * 1000; // 5 minutes
+            const cacheTime = 5 * 60 * 1000;
             
             if (cachedResults[cacheKey] && (Date.now() - cachedResults[cacheKey].timestamp < cacheTime)) {
                 displayResults(cachedResults[cacheKey].data);
-                showAlert('📦 Loaded from cache (fast!)', 'success');
+                showAlert('📦 Loaded from cache!', 'success');
                 return;
             }
 
@@ -765,7 +756,6 @@
                 });
 
                 const data = await response.json();
-
                 document.getElementById('loadingIndicator').classList.add('hidden');
 
                 if (data.error) {
@@ -773,38 +763,27 @@
                     return;
                 }
 
-                // Cache results
-                cachedResults[cacheKey] = {
-                    data: data,
-                    timestamp: Date.now()
-                };
-
+                cachedResults[cacheKey] = { data, timestamp: Date.now() };
                 displayResults(data);
-                await saveToHistory(data);
+                saveToHistory(data);
                 checkSpamAlert(data);
-                
-                showAlert('✅ Statistics updated!', 'success');
+                showAlert('✅ Stats updated!', 'success');
 
             } catch (error) {
                 document.getElementById('loadingIndicator').classList.add('hidden');
-                showAlert(`❌ Connection error: ${error.message}`, 'error');
+                showAlert(`❌ Error: ${error.message}`, 'error');
             }
         }
 
         function displayResults(data) {
-            // Update numbers
             document.getElementById('inboxCount').textContent = data.inbox;
             document.getElementById('spamCount').textContent = data.spam;
             document.getElementById('totalCount').textContent = data.total;
             
-            // Calculate spam score
             const spamScore = data.total > 0 ? Math.round((data.spam / data.total) * 100) : 0;
             document.getElementById('spamScore').textContent = spamScore + '%';
 
-            // Show changes
             showChanges(data);
-
-            // Update charts
             updatePieChart(data.inbox, data.spam);
             updateLineChart();
 
@@ -814,9 +793,9 @@
         function showChanges(data) {
             if (statsHistory.length < 2) return;
 
-            const previous = statsHistory[statsHistory.length - 2];
-            const inboxChange = data.inbox - previous.inbox;
-            const spamChange = data.spam - previous.spam;
+            const prev = statsHistory[statsHistory.length - 2];
+            const inboxChange = data.inbox - prev.inbox;
+            const spamChange = data.spam - prev.spam;
 
             const inboxEl = document.getElementById('inboxChange');
             const spamEl = document.getElementById('spamChange');
@@ -833,13 +812,8 @@
             if (total === 0) return;
 
             const inboxPercent = (inbox / total) * 100;
-            const spamPercent = (spam / total) * 100;
-
             const pie = document.getElementById('pieChart');
-            pie.style.background = `conic-gradient(
-                #667eea 0% ${inboxPercent}%,
-                #f56565 ${inboxPercent}% 100%
-            )`;
+            pie.style.background = `conic-gradient(#667eea 0% ${inboxPercent}%, #f56565 ${inboxPercent}% 100%)`;
             
             pie.innerHTML = `
                 <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--bg-card); width: 120px; height: 120px; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
@@ -855,29 +829,25 @@
             
             if (last7.length === 0) return;
 
-            const maxValue = Math.max(...last7.map(s => s.spam), 1);
-            
+            const maxVal = Math.max(...last7.map(s => s.spam || 0), 1);
             chart.innerHTML = '';
+            
             last7.forEach((stat, i) => {
-                const height = (stat.spam / maxValue) * 100;
+                const height = ((stat.spam || 0) / maxVal) * 100;
                 const bar = document.createElement('div');
                 bar.className = 'line-bar';
                 bar.style.height = height + '%';
-                bar.innerHTML = `
-                    <div class="line-bar-label">Day ${i + 1}</div>
-                `;
+                bar.innerHTML = `<div class="line-bar-label">Day ${i + 1}</div>`;
                 chart.appendChild(bar);
             });
         }
 
         async function saveToHistory(data) {
             const today = new Date().toISOString().split('T')[0];
+            const todayIdx = statsHistory.findIndex(s => s.date === today);
             
-            // Check if today exists
-            const todayIndex = statsHistory.findIndex(s => s.date === today);
-            
-            if (todayIndex >= 0) {
-                statsHistory[todayIndex] = { date: today, ...data };
+            if (todayIdx >= 0) {
+                statsHistory[todayIdx] = { date: today, ...data };
             } else {
                 statsHistory.push({ date: today, ...data });
             }
@@ -888,5 +858,69 @@
         function checkSpamAlert(data) {
             if (statsHistory.length < 2) return;
 
-            const previous = statsHistory[statsHistory.length - 2];
-            const increase = ((data.spam - previous.
+            const prev = statsHistory[statsHistory.length - 2];
+            if (prev.spam === 0) return;
+            
+            const increase = ((data.spam - prev.spam) / prev.spam) * 100;
+            
+            if (increase >= 50) {
+                showAlert(`🚨 WARNING: Spam increased by ${Math.round(increase)}%!`, 'warning');
+            }
+        }
+
+        function showShortcuts() {
+            document.getElementById('shortcutsModal').classList.add('show');
+        }
+
+        function closeShortcuts() {
+            document.getElementById('shortcutsModal').classList.remove('show');
+        }
+
+        function clearCache() {
+            cachedResults = {};
+            showAlert('🗑️ Cache cleared!', 'success');
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadAccounts();
+            await loadHistory();
+            loadTheme();
+            renderAccounts();
+
+            document.getElementById('addAccountBtn').addEventListener('click', addAccount);
+            document.getElementById('fetchStatsBtn').addEventListener('click', fetchStatistics);
+            document.querySelector('.theme-toggle').addEventListener('click', toggleTheme);
+            document.querySelector('.shortcuts-btn').addEventListener('click', showShortcuts);
+            document.getElementById('closeModalBtn').addEventListener('click', closeShortcuts);
+            document.getElementById('accountSelector').addEventListener('change', (e) => {
+                const idx = e.target.value;
+                if (idx !== '') selectAccount(parseInt(idx));
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT') return;
+                
+                if (e.key === 'r' || e.key === 'R') {
+                    e.preventDefault();
+                    fetchStatistics();
+                } else if (e.key === 't' || e.key === 'T') {
+                    e.preventDefault();
+                    toggleTheme();
+                } else if (e.key === '?') {
+                    e.preventDefault();
+                    showShortcuts();
+                } else if (e.key === 's' || e.key === 'S') {
+                    e.preventDefault();
+                    document.getElementById('subjectFilter').focus();
+                } else if (e.key === 'f' || e.key === 'F') {
+                    e.preventDefault();
+                    document.getElementById('fromFilter').focus();
+                } else if (e.key === 'c' || e.key === 'C') {
+                    e.preventDefault();
+                    clearCache();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
